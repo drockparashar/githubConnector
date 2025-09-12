@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SourceSense - GitHub App</title>
+    <link rel="icon" type="image/png" sizes="96x96" href="https://atlan.com/favicon-96x96.png">
+    <link rel="stylesheet" href="{{ url_for('static', path='styles.css') }}">
+</head>
+<body>
+    <script>
+        // Environment variables passed from the server
+        window.env = {
+          APP_HTTP_HOST: "{{ app_http_host }}",
+          APP_HTTP_PORT: "{{ app_http_port }}",
+          TENANT_ID: "{{ tenant_id }}",
+          APP_NAME: "{{ app_name }}",
+          TEMPORAL_UI_HOST: "{{ workflow_ui_host }}",
+          TEMPORAL_UI_PORT: "{{ workflow_ui_port }}",
+        }
+    </script>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo-container">
+                <img src="https://cdn-icons-png.flaticon.com/512/25/25231.png" alt="GitHub Logo" class="logo" width="80" height="80">
+                <h1>SourceSense GitHub App</h1>
+            </div>
+            <div class="doc-link">
+                <a href="https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens" target="_blank" class="doc-link-button">
+                    <svg xmlns="http://www.w.3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" width="24" height="24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                    </svg>
+                    <span>API Token Docs</span>
+                </a>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="step-list">
+                    <div class="step active" data-step="1" onclick="goToPage(1)">
+                        <div class="step-indicator">1</div>
+                        <span>Configuration</span>
+                    </div>
+                    <div class="step" data-step="2" onclick="goToPage(2)">
+                        <div class="step-indicator">2</div>
+                        <span>Run</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Container -->
+            <div class="form-container">
+                <!-- Page 1: Configuration -->
+                <div id="page1" class="page active">
+                    <div class="section">
+                        <h2>Authentication</h2>
+                        <p class="section-description">Provide your GitHub Personal Access Token to authenticate with the API. The token requires `repo` scope permissions.</p>
+                    </div>
+                    <div class="form-group">
+                        <label>Personal Access Token *</label>
+                        <input type="password" id="token" placeholder="ghp_...">
+                    </div>
+                     <div class="section">
+                        <h2>Target</h2>
+                        <p class="section-description">Enter the name of the GitHub user or organization whose repositories you want to scan.</p>
+                    </div>
+                    <div class="form-group">
+                        <label>GitHub Owner (User or Org) *</label>
+                        <input type="text" id="owner" placeholder="e.g., atlanhq or john-doe">
+                    </div>
+
+                    <button class="btn btn-outline test-connection" onclick="testConnection()">Test Connection</button>
+                    <div class="error-message" id="connectionError"></div>
+
+                    <div class="bottom-bar">
+                        <div id="page1-nav" class="nav-buttons">
+                            <div></div> <!-- Empty div for spacing -->
+                            <button onclick="nextPage()" class="btn btn-primary" id="nextButton" disabled>Next</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Page 2: Run -->
+                <div id="page2" class="page">
+                    <div class="section">
+                        <h2>Connection Details</h2>
+                         <p class="section-description">Give a unique name to this connection to identify it later in Atlan.</p>
+                    </div>
+                    <div class="form-group">
+                        <label>Connection Name *</label>
+                        <input type="text" id="connectionName" placeholder="e.g., github-development-source">
+                    </div>
+
+                    <div class="preflight-section">
+                        <div class="preflight-header">
+                            <h2>Preflight Checks</h2>
+                            <button id="runPreflightChecks" class="btn btn-primary">Check</button>
+                        </div>
+                        <div class="preflight-content">
+                            <!-- Results will be dynamically inserted here -->
+                        </div>
+                    </div>
+
+                    <div class="bottom-bar">
+                        <div id="page2-nav" class="nav-buttons" style="display: none;">
+                            <button onclick="previousPage()" class="btn btn-secondary">Previous</button>
+                            <div class="action-buttons">
+                                <button id="runWorkflowButton" class="btn btn-primary">Run</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Success Modal -->
+    <div id="successModal" class="modal">
+        <div class="modal-content">
+            <div class="success-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <h2>Workflow Started Successfully!</h2>
+            <p>Your workflow has been initiated and is now running.</p>
+            <div class="modal-actions">
+                <a href="http://{{ workflow_ui_host }}:{{ workflow_ui_port }}/namespaces/default/workflows" class="btn btn-primary" target="_blank">Go to Dashboard</a>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', path='script.js') }}"></script>
+</body>
+</html>

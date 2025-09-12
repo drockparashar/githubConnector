@@ -1,0 +1,364 @@
+:root {
+    --primary-color: #24292e; /* GitHub Header Black */
+    --primary-hover: #1b1f23;
+    --secondary-color: #586069; /* GitHub secondary text */
+    --border-color: #e1e4e8;
+    --background-color: #f6f8fa;
+    --success-color: #28a745; /* GitHub Green */
+    --error-color: #d73a49; /* GitHub Red */
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--background-color);
+    color: #24292e;
+    line-height: 1.5;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.logo-container h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.main-content {
+    display: flex;
+    gap: 2.5rem;
+    background-color: white;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 2rem;
+}
+
+/* Sidebar Styles */
+.sidebar {
+    width: 200px;
+    flex-shrink: 0;
+}
+
+.step-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.step {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--secondary-color);
+    cursor: pointer;
+}
+
+.step.active {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.step-indicator {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    background-color: white;
+    color: var(--secondary-color);
+    font-weight: normal;
+}
+
+.step.completed .step-indicator {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.step.active .step-indicator {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+
+/* Form Container Styles */
+.form-container {
+    flex: 1;
+    max-width: 700px;
+    position: relative;
+    padding-bottom: 80px; /* Space for the bottom bar */
+}
+
+.page { display: none; }
+.page.active { display: block; }
+
+.section {
+    margin-bottom: 1.5rem;
+}
+
+.section h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.section-description {
+    font-size: 0.9rem;
+    color: var(--secondary-color);
+    margin-bottom: 1rem;
+}
+
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+input[type="text"],
+input[type="password"] {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus {
+    outline: none;
+    border-color: #0366d6; /* GitHub Blue */
+    box-shadow: 0 0 0 3px rgba(3, 102, 214, 0.3);
+}
+
+.btn {
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    border: 1px solid rgba(27, 31, 35, 0.15);
+}
+
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.btn-primary {
+    background-color: var(--success-color);
+    color: white;
+    border-color: var(--success-color);
+}
+.btn-primary:hover:not(:disabled) {
+    background-color: #22863a;
+}
+
+.btn-secondary {
+    background-color: #f6f8fa;
+    border-color: rgba(27, 31, 35, 0.15);
+    color: var(--primary-color);
+}
+.btn-secondary:hover:not(:disabled) {
+    background-color: #e1e4e8;
+}
+
+.btn-outline {
+    background-color: white;
+    border: 1px solid #e1e4e8;
+    color: var(--primary-color);
+}
+.btn-outline:hover:not(:disabled) {
+    border-color: var(--primary-color);
+}
+
+.test-connection {
+    margin-top: 1rem;
+    display: inline-flex;
+    align-items: center;
+}
+
+.test-connection.success {
+    background-color: var(--success-color) !important;
+    color: white !important;
+    border-color: var(--success-color) !important;
+}
+
+
+/* Preflight Section */
+.preflight-section {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+}
+
+.preflight-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.preflight-content {
+    margin-top: 1rem;
+}
+
+.check-result {
+    padding: 0.75rem 0;
+    border-top: 1px solid var(--border-color);
+}
+.preflight-content .check-result:first-child {
+    border-top: none;
+    padding-top: 0;
+}
+
+
+.check-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.check-status svg {
+    width: 20px;
+    height: 20px;
+}
+
+.check-status.success {
+    color: var(--success-color);
+}
+
+.check-status.error {
+    color: var(--error-color);
+}
+
+.bottom-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: #fff;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.nav-buttons {
+    display: flex;
+    justify-content: space-between;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+
+.error-message {
+    display: none;
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--error-color);
+    border-radius: 6px;
+    color: var(--error-color);
+    background-color: #f8d7da;
+}
+.error-message.visible { display: block; }
+
+
+.doc-link-button {
+    text-decoration: none;
+    color: var(--secondary-color);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid transparent;
+    padding: 0.5rem;
+    border-radius: 6px;
+}
+
+.doc-link-button:hover {
+    background-color: #f6f8fa;
+    border-color: var(--border-color);
+}
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal.show { display: flex; }
+
+.modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 6px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    position: relative;
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.success-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1.5rem;
+    color: var(--success-color);
+}
+
+.modal-content h2 { margin: 0 0 1rem; }
+.modal-content p { margin: 0 0 1.5rem; color: var(--secondary-color); }
+.modal-actions { margin-top: 1.5rem; }
+
+#runWorkflowButton.success {
+    background-color: var(--success-color);
+}
+
+#runWorkflowButton.error {
+    background-color: var(--error-color);
+}
