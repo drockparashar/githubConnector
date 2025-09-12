@@ -2,7 +2,6 @@ import asyncio
 
 from application_sdk.application import BaseApplication # CORRECTED IMPORT
 from application_sdk.common.error_codes import ApiError
-from application_sdk.constants import APPLICATION_NAME
 from application_sdk.observability.logger_adaptor import get_logger
 
 # Import the custom classes from the 'app' module
@@ -22,7 +21,7 @@ async def main():
     """
     try:
         application = BaseApplication(
-            name=APPLICATION_NAME or "sourcesense",
+            name="sourcesense",
             client_class=GitHubClient,
             handler_class=GitHubHandler,
         )

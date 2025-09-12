@@ -1,6 +1,6 @@
-# 🗃️ MySQL App
+# � SourceSense GitHub App
 
-A powerful application that extracts metadata from MySQL databases and transforms it into a standardized format. Built with Application SDK for robust workflow management.
+A powerful application that extracts metadata from GitHub repositories and transforms it into a standardized format. Built with Application SDK for robust workflow management and intelligent metadata extraction.
 
 ## Prerequisites
 
@@ -8,9 +8,10 @@ A powerful application that extracts metadata from MySQL databases and transform
 - [uv](https://docs.astral.sh/uv/) package manager
 - [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/)
 - [Temporal CLI](https://docs.temporal.io/cli)
-- MySQL database access
+- GitHub Personal Access Token
 
 ### Installation Guides
+
 - [macOS Setup Guide](https://github.com/atlanhq/application-sdk/blob/main/docs/docs/setup/MAC.md)
 - [Linux Setup Guide](https://github.com/atlanhq/application-sdk/blob/main/docs/docs/setup/LINUX.md)
 - [Windows Setup Guide](https://github.com/atlanhq/application-sdk/blob/main/docs/docs/setup/WINDOWS.md)
@@ -18,6 +19,7 @@ A powerful application that extracts metadata from MySQL databases and transform
 ## Quick Start
 
 1. **Download required components:**
+
    ```bash
    uv run poe download-components
    ```
@@ -25,6 +27,7 @@ A powerful application that extracts metadata from MySQL databases and transform
 2. **Set up environment variables (see .env.example)**
 
 3. **Start dependencies (in separate terminal):**
+
    ```bash
    uv run poe start-deps
    ```
@@ -35,42 +38,46 @@ A powerful application that extracts metadata from MySQL databases and transform
    ```
 
 **Access the application:**
+
 - **Web Interface**: http://localhost:8000
 - **Temporal UI**: http://localhost:8233
 
 ## Features
 
-- Automated metadata extraction from MySQL databases
-- Structured workflow for database, schema, table, and column extraction
-- Real-time workflow status tracking
+- Automated metadata extraction from GitHub repositories
+- Intelligent repository analysis and classification
+- Real-time workflow status tracking via Temporal
 - Robust error handling and retry mechanisms
-- Standardized metadata transformation
+- Standardized metadata transformation to Atlan format
+- Windows-compatible file handling with fallback strategies
 
 ## Project Structure
 
 ```mermaid
 graph TD
-    A[main.py] --> B[app/workflows.py]
+    A[main.py] --> B[app/workflow.py]
     A --> C[app/activities.py]
     A --> D[app/transformer.py]
-    A --> E[app/clients.py]
+    A --> E[app/client.py]
+    A --> F[app/handler.py]
     B --> C
     C --> E
+    C --> F
     D --> E
 ```
 
 ```
-mysql/
+github/
 ├── app/                # Core application logic
-│   ├── sql/           # SQL query templates
-│   ├── activities.py  # Database interaction activities
-│   ├── clients.py     # MySQL client implementation
-│   ├── transformer.py # Metadata transformation logic
-│   └── workflows.py   # Workflow definitions and orchestration
+│   ├── activities.py   # GitHub API interaction activities
+│   ├── client.py       # GitHub API client implementation
+│   ├── handler.py      # Business logic for GitHub operations
+│   ├── transformer.py  # Metadata transformation logic
+│   └── workflow.py     # Workflow definitions and orchestration
 ├── components/         # Dapr components (auto-downloaded)
 ├── frontend/           # Web interface assets
 ├── deploy/            # Installation and deployment files
-├── local/              # Local data storage
+├── local/              # Local data storage and artifacts
 ├── models/             # Data models and schemas
 ├── main.py             # Application entry point and initialization
 ├── pyproject.toml      # Dependencies and config
@@ -80,11 +87,13 @@ mysql/
 ## Development
 
 ### Stop Dependencies
+
 ```bash
 uv run poe stop-deps
 ```
 
 ### Run Tests
+
 ```bash
 uv run pytest
 ```
@@ -94,22 +103,25 @@ uv run pytest
 
 ## Workflow Process
 
-1. **Initialization**: The application sets up the SQL client and workflow components
-2. **Preflight Check**: Validates database connectivity and permissions
-3. **Metadata Extraction**:
-   - Fetches database information
-   - Extracts schema details
-   - Retrieves table metadata
-   - Gathers column information
-4. **Transformation**: Converts raw metadata into standardized format
-5. **Output**: Saves the transformed metadata to specified location
-
+1. **Initialization**: The application sets up the GitHub client and workflow components
+2. **Authentication**: Validates GitHub Personal Access Token and API connectivity
+3. **Preflight Check**: Tests access to specified GitHub user/organization
+4. **Repository Discovery**: Fetches all accessible repositories for the target owner
+5. **Metadata Extraction**:
+   - Retrieves repository information (name, description, language, etc.)
+   - Captures ownership and permission details
+   - Extracts repository statistics and configuration
+6. **Data Processing**: Flattens nested GitHub API responses for analysis
+7. **Transformation**: Converts raw GitHub data into Atlan-compatible format
+8. **Storage**: Saves processed data as Parquet files and JSON for upload
+9. **Upload to Atlan**: Migrates transformed metadata to Atlan storage system
 
 ## Learning Resources
 
 - [Atlan Application SDK Documentation](https://github.com/atlanhq/application-sdk/tree/main/docs)
-- [MySQL Documentation](https://dev.mysql.com/doc/)
+- [GitHub API Documentation](https://docs.github.com/en/rest)
 - [Python FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [Temporal Workflow Documentation](https://docs.temporal.io/)
 
 ## Contributing
 

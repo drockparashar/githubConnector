@@ -29,14 +29,23 @@ class GitHubRepository:
         """
         connection_qualified_name = obj.get("connection_qualified_name", "")
 
+        # Clean text fields to remove problematic Unicode characters
+        def clean_text(text):
+            if not text:
+                return text
+            if isinstance(text, str):
+                # Replace problematic Unicode characters with safe alternatives
+                return text.encode('ascii', 'ignore').decode('ascii')
+            return text
+
         # Attributes that map to the generic 'Resource' asset type in Atlan
         attributes = {
-            "name": obj.get("name"),
+            "name": clean_text(obj.get("name")),
             "qualifiedName": build_atlas_qualified_name(
                 connection_qualified_name, obj.get("full_name", "")
             ),
             "connectionQualifiedName": connection_qualified_name,
-            "description": obj.get("description"),
+            "description": clean_text(obj.get("description")),
             "sourceUrl": obj.get("html_url"),
         }
 
@@ -49,7 +58,7 @@ class GitHubRepository:
             "github_watchers_count": obj.get("watchers_count", 0),
             "github_forks_count": obj.get("forks_count", 0),
             "github_open_issues_count": obj.get("open_issues_count", 0),
-            "github_language": obj.get("language"),
+            "github_language": clean_text(obj.get("language")),
         }
 
         return {
@@ -95,6 +104,12 @@ class GitHubTransformer(AtlasTransformer):
 
         connection_qualified_name = kwargs.get("connection_qualified_name", None)
         connection_name = kwargs.get("connection_name", None)
+
+        # Provide default values if connection information is None
+        if not connection_qualified_name:
+            connection_qualified_name = "default/github/connection"
+        if not connection_name:
+            connection_name = "github-default"
 
         data.update(
             {

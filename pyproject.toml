@@ -1,7 +1,7 @@
 [project]
-name = "mysql-app"
+name = "github-app"
 version = "0.1.0"
-description = "MySQL metadata extraction app built using Atlan Application SDK"
+description = "GitHub metadata extraction app built using Atlan Application SDK"
 authors = [{ name = "Atlan App Team", email = "connect@atlan.com" }]
 requires-python = ">=3.11"
 license = "Apache-2.0"
@@ -9,7 +9,10 @@ readme = "README.md"
 dependencies = [
     "atlan-application-sdk[daft,sqlalchemy,tests,workflows]==0.1.1rc38",
     "poethepoet",
-    "pymysql>=1.1.1",
+    "pandas>=2.0.0",
+    "pyarrow>=14.0.0",
+    "temporalio>=1.0.0",
+    "fastapi>=0.100.0"
 ]
 
 [dependency-groups]

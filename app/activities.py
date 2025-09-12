@@ -94,13 +94,15 @@ class SourceSenseActivities(BaseMetadataExtractionActivities):
         Fetches metadata, writes it to a LOCAL Parquet file, and returns the path.
         """
         state = cast(BaseMetadataExtractionActivitiesState, await self._get_state(workflow_args))
-        handler: GitHubHandler = state.handler
+        handler = cast(GitHubHandler, state.handler)
+        if not handler:
+            raise ValueError("Handler is not initialized in the activity state.")
 
         # --- START FIX: Add cleanup step ---
         # Manually clean up the output directory from any previous runs to prevent conflicts.
+        import shutil
         output_path = workflow_args.get("output_path")
-        if os.path.exists(output_path):
-            import shutil
+        if output_path and os.path.exists(output_path):
             shutil.rmtree(output_path)
             logger.info(f"Cleaned up previous run data from: {output_path}")
         # --- END FIX ---
@@ -113,25 +115,90 @@ class SourceSenseActivities(BaseMetadataExtractionActivities):
             logger.warning("No repositories found, skipping file write.")
             return None
 
-        flattened_data = []
-        for repo in raw_data_list:
+        logger.info(f"Processing {len(raw_data_list)} repositories")
+
+        flattened_data: List[Dict[str, Any]] = []
+        for i, repo in enumerate(raw_data_list):
             flat_repo = repo.copy()
             if 'owner' in flat_repo and isinstance(flat_repo['owner'], dict):
-                flat_repo['owner_login'] = flat_repo['owner'].get('login')
-            del flat_repo['owner']
+                owner_dict = flat_repo['owner']
+                flat_repo['owner_login'] = owner_dict['login'] if 'login' in owner_dict else None
+                del flat_repo['owner']
+            else:
+                flat_repo['owner_login'] = None
+                if 'owner' in flat_repo:
+                    del flat_repo['owner']
             flattened_data.append(flat_repo)
+            
+            # Debug: log first few items
+            if i < 3:
+                logger.info(f"Processed repo {i}: {flat_repo.get('name', 'unnamed')} with keys: {list(flat_repo.keys())}")
+        
+        logger.info(f"Flattened {len(flattened_data)} repositories")
 
         raw_dataframe = daft.from_pylist(flattened_data)
+        
+        # Debug: Check if dataframe has data
+        logger.info(f"Created dataframe with {raw_dataframe.count_rows()} rows and {len(raw_dataframe.columns)} columns")
+        logger.info(f"DataFrame columns: {raw_dataframe.columns}")
+        
+        if not output_path:
+            raise ValueError("output_path is required in workflow_args")
         
         local_raw_data_path = os.path.join(output_path, "raw", "REPOSITORY")
         os.makedirs(local_raw_data_path, exist_ok=True)
 
         try:
-            raw_dataframe.write_parquet(root_dir=local_raw_data_path, write_mode="overwrite")
-            logger.info(f"Successfully wrote Parquet files to local temp directory: {local_raw_data_path}")
+            # Use a specific file path instead of root_dir to ensure files are written
+            parquet_file_path = os.path.join(local_raw_data_path, "repositories.parquet")
+            logger.info(f"About to write parquet file to: {parquet_file_path}")
+            logger.info(f"Dataframe type: {type(raw_dataframe)}, has {raw_dataframe.count_rows()} rows")
+            
+            # Skip Daft write completely and use pandas directly for Windows compatibility
+            try:
+                logger.info("Using pandas approach directly to avoid Windows file locking issues")
+                
+                # Convert Daft dataframe to pandas
+                materialized_df = raw_dataframe.collect()
+                pandas_df = materialized_df.to_pandas()
+                
+                # Write using pandas
+                pandas_df.to_parquet(parquet_file_path, engine='pyarrow')
+                
+                # Verify the file was written successfully
+                if os.path.exists(parquet_file_path):
+                    file_size = os.path.getsize(parquet_file_path)
+                    logger.info(f"Successfully wrote parquet file, size: {file_size} bytes")
+                    
+                    if file_size == 0:
+                        raise ValueError("Parquet file was written but has 0 bytes")
+                else:
+                    raise FileNotFoundError(f"Parquet file was not created at {parquet_file_path}")
+                    
+            except Exception as write_error:
+                logger.error(f"Failed to write parquet with pandas: {write_error}")
+                
+                # Last resort: try different file path in case of path issues
+                logger.info("Attempting alternative file path approach")
+                
+                alternative_path = os.path.join(local_raw_data_path, f"repositories_{get_workflow_run_id()}.parquet")
+                logger.info(f"Trying alternative path: {alternative_path}")
+                
+                # Ensure we have fresh dataframe conversion
+                materialized_df = raw_dataframe.collect()
+                pandas_df = materialized_df.to_pandas()
+                pandas_df.to_parquet(alternative_path, engine='pyarrow')
+                
+                if os.path.exists(alternative_path):
+                    final_size = os.path.getsize(alternative_path)
+                    logger.info(f"Successfully wrote parquet using alternative path, size: {final_size} bytes")
+                    # Update the path for later use
+                    parquet_file_path = alternative_path
+                else:
+                    raise Exception("Failed to write parquet file with any approach")
             
             stats = ActivityStatistics(
-                total_record_count=len(flattened_data),
+                total_record_count=raw_dataframe.count_rows(),
                 chunk_count=1,
                 typename="REPOSITORY",
             )
@@ -159,26 +226,59 @@ class SourceSenseActivities(BaseMetadataExtractionActivities):
                 raise ValueError("Local Parquet path was not provided to transform_data.")
 
             logger.info(f"Reading raw data directly from local path: {local_parquet_path}")
-            # Create the glob path to find all .parquet files in the directory
-            glob_path = os.path.join(local_parquet_path, "*.parquet")
             
-            # IMPORTANT: Normalize the path to use only forward slashes for cross-platform compatibility
-            normalized_glob_path = glob_path.replace("\\", "/")
+            # Check what files exist in the directory for debugging
+            if os.path.exists(local_parquet_path):
+                files_in_dir = os.listdir(local_parquet_path)
+                logger.info(f"Files in directory {local_parquet_path}: {files_in_dir}")
+            else:
+                raise FileNotFoundError(f"Directory {local_parquet_path} does not exist")
+            
+            # Look for the specific parquet file we created
+            import glob
+            parquet_file_path = os.path.join(local_parquet_path, "repositories.parquet")
+            if os.path.exists(parquet_file_path):
+                logger.info(f"Found specific parquet file: {parquet_file_path}")
+                raw_dataframe = daft.read_parquet(parquet_file_path)
+            else:
+                # Fallback: try to find any parquet files
+                recursive_pattern = os.path.join(local_parquet_path, "**", "*.parquet")
+                parquet_files = glob.glob(recursive_pattern, recursive=True)
+                logger.info(f"Found parquet files with recursive search: {parquet_files}")
+                
+                if not parquet_files:
+                    raise FileNotFoundError(f"No parquet files found in {local_parquet_path}")
+                
+                # Read the files
+                raw_dataframe = daft.read_parquet(parquet_files)
 
-            raw_dataframe = daft.read_parquet(normalized_glob_path)
-
-            if raw_dataframe.is_empty():
+            # Check if dataframe is empty using count_rows for unmaterialized dataframes
+            if raw_dataframe.count_rows() == 0:
                 logger.warning("Raw data dataframe is empty, skipping transformation.")
                 return None
             
             output_path = workflow_args.get("output_path")
             output_prefix = workflow_args.get("output_prefix")
 
-            transformed_dataframe = state.transformer.transform_metadata(
-                dataframe=raw_dataframe, **workflow_args
-            )
+            # Extract workflow args to avoid duplicate keyword arguments
+            # Ensure connection fields have default values to prevent None errors
+            connection_name = workflow_args.get("connection_name") or "github-default"
+            connection_qualified_name = workflow_args.get("connection_qualified_name") or "default/github/connection"
+            
+            transform_kwargs = {
+                "typename": "REPOSITORY",
+                "dataframe": raw_dataframe,
+                "workflow_id": workflow_args.get("workflow_id", ""),
+                "workflow_run_id": workflow_args.get("workflow_run_id", ""),
+                "connection": {
+                    "connection_name": connection_name,
+                    "connection_qualified_name": connection_qualified_name
+                }
+            }
 
-            if not transformed_dataframe or transformed_dataframe.is_empty():
+            transformed_dataframe = state.transformer.transform_metadata(**transform_kwargs)
+
+            if not transformed_dataframe or transformed_dataframe.count_rows() == 0:
                 logger.warning("Transformation resulted in an empty dataframe.")
                 return None
 
@@ -189,9 +289,21 @@ class SourceSenseActivities(BaseMetadataExtractionActivities):
                 typename="REPOSITORY",
             )
 
+            logger.info(f"About to write transformed data with output_prefix: {output_prefix}, output_path: {output_path}")
             await transformed_output.write_daft_dataframe(transformed_dataframe)
             
-            logger.info(f"Successfully wrote transformed data to object store at {transformed_output.get_full_path()}")
+            # Add debugging to check what files were actually created
+            if output_path:
+                local_json_files = glob.glob(os.path.join(output_path, "**", "*.json"), recursive=True)
+                logger.info(f"Local JSON files created: {local_json_files}")
+                
+                # Check object store path
+                object_store_prefix = get_object_store_prefix(output_path)
+                logger.info(f"Object store prefix should be: {object_store_prefix}")
+            else:
+                logger.warning("output_path is None, cannot check created files")
+            
+            logger.info(f"Successfully wrote transformed data to object store")
             return await transformed_output.get_statistics()
 
         except Exception as e: # --- START CHANGE: Add except block to log the error ---
@@ -205,8 +317,18 @@ class SourceSenseActivities(BaseMetadataExtractionActivities):
         """
         Uploads the transformed data from the object store to Atlan.
         """
-        migration_prefix = workflow_args["output_path"]
-        logger.info(f"Starting migration from object store with prefix: {migration_prefix}")
+        output_path = workflow_args["output_path"]
+        
+        # The JsonOutput uses get_object_store_prefix to determine where files are uploaded
+        from application_sdk.activities.common.utils import get_object_store_prefix
+        
+        if output_path:
+            migration_prefix = get_object_store_prefix(output_path)
+            logger.info(f"Starting migration from object store with prefix: {migration_prefix}")
+            logger.info(f"Original output_path was: {output_path}")
+        else:
+            logger.error("output_path is None in upload_to_atlan")
+            raise ValueError("output_path is required for upload_to_atlan")
         
         upload_stats = await AtlanStorage.migrate_from_objectstore_to_atlan(prefix=migration_prefix)
 
