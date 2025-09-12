@@ -91,12 +91,20 @@ class SourceSenseActivities(BaseMetadataExtractionActivities):
         self, workflow_args: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
         """
-        Fetches metadata, uploads it to the object store, and returns the object store path.
+        Fetches metadata, writes it to a LOCAL Parquet file, and returns the path.
         """
-        logger.info("--- Starting fetch_repositories activity ---")
         state = cast(BaseMetadataExtractionActivitiesState, await self._get_state(workflow_args))
         handler: GitHubHandler = state.handler
 
+        # --- START FIX: Add cleanup step ---
+        # Manually clean up the output directory from any previous runs to prevent conflicts.
+        output_path = workflow_args.get("output_path")
+        if os.path.exists(output_path):
+            import shutil
+            shutil.rmtree(output_path)
+            logger.info(f"Cleaned up previous run data from: {output_path}")
+        # --- END FIX ---
+        
         raw_data_list: List[Dict[str, Any]] = await handler.fetch_repositories_metadata(
             owner=workflow_args.get("metadata", {}).get("owner")
         )
@@ -115,36 +123,20 @@ class SourceSenseActivities(BaseMetadataExtractionActivities):
 
         raw_dataframe = daft.from_pylist(flattened_data)
         
-        output_path = workflow_args.get("output_path")
-        logger.info(f"[FETCH] Workflow 'output_path': {output_path}")
-        
         local_raw_data_path = os.path.join(output_path, "raw", "REPOSITORY")
-        logger.info(f"[FETCH] Writing Parquet data to LOCAL path: {local_raw_data_path}")
         os.makedirs(local_raw_data_path, exist_ok=True)
 
         try:
             raw_dataframe.write_parquet(root_dir=local_raw_data_path, write_mode="overwrite")
+            logger.info(f"Successfully wrote Parquet files to local temp directory: {local_raw_data_path}")
             
-            await asyncio.sleep(1)
-
-            object_store_destination = get_object_store_prefix(local_raw_data_path)
-            logger.info(f"[FETCH] Calculated OBJECT STORE destination path: {object_store_destination}")
-            
-            await ObjectStore.upload_prefix(
-                source=local_raw_data_path,
-                destination=object_store_destination
-            )
-            logger.info(f"[FETCH] Successfully uploaded local directory to object store.")
-
             stats = ActivityStatistics(
                 total_record_count=len(flattened_data),
                 chunk_count=1,
                 typename="REPOSITORY",
             )
             
-            logger.info(f"[FETCH] Returning object_store_path to workflow: {object_store_destination}")
-            logger.info("--- Finished fetch_repositories activity ---")
-            return {"stats": stats, "object_store_path": object_store_destination}
+            return {"stats": stats, "local_path": local_raw_data_path}
 
         except Exception as e:
             logger.error(f"Error during fetch and save process: {e}", exc_info=True)
@@ -155,52 +147,56 @@ class SourceSenseActivities(BaseMetadataExtractionActivities):
         self, workflow_args: Dict[str, Any]
     ) -> Optional[ActivityStatistics]:
         """
-        Reads raw Parquet data from the object store, transforms it, and writes JSON back.
+        Reads raw Parquet data from a LOCAL path, transforms it, and writes JSON back to object store.
         """
-        logger.info("--- Starting transform_data activity ---")
         state = cast(BaseMetadataExtractionActivitiesState, await self._get_state(workflow_args))
         if not state.transformer:
             raise ValueError("Transformer is not initialized in the activity state.")
 
-        object_store_path = workflow_args.get("object_store_path")
-        logger.info(f"[TRANSFORM] Received OBJECT STORE path to read from: {object_store_path}")
-        if not object_store_path:
-            raise ValueError("Object store path was not provided to transform_data.")
+        try: # --- START CHANGE: Add try block to reveal hidden errors ---
+            local_parquet_path = workflow_args.get("local_parquet_path")
+            if not local_parquet_path:
+                raise ValueError("Local Parquet path was not provided to transform_data.")
+
+            logger.info(f"Reading raw data directly from local path: {local_parquet_path}")
+            # Create the glob path to find all .parquet files in the directory
+            glob_path = os.path.join(local_parquet_path, "*.parquet")
             
-        output_prefix = workflow_args.get("output_prefix")
-        logger.info(f"[TRANSFORM] Received 'output_prefix' for local download: {output_prefix}")
+            # IMPORTANT: Normalize the path to use only forward slashes for cross-platform compatibility
+            normalized_glob_path = glob_path.replace("\\", "/")
 
-        logger.info(f"[TRANSFORM] Initializing ParquetInput with path='{object_store_path}' and input_prefix='{output_prefix}'")
-        raw_input = ParquetInput(path=object_store_path, input_prefix=output_prefix)
+            raw_dataframe = daft.read_parquet(normalized_glob_path)
 
-        raw_dataframe = await raw_input.get_daft_dataframe()
+            if raw_dataframe.is_empty():
+                logger.warning("Raw data dataframe is empty, skipping transformation.")
+                return None
+            
+            output_path = workflow_args.get("output_path")
+            output_prefix = workflow_args.get("output_prefix")
 
-        if raw_dataframe.is_empty():
-            logger.warning("Raw data dataframe from object store is empty, skipping transformation.")
-            return None
+            transformed_dataframe = state.transformer.transform_metadata(
+                dataframe=raw_dataframe, **workflow_args
+            )
 
-        output_path = workflow_args.get("output_path")
+            if not transformed_dataframe or transformed_dataframe.is_empty():
+                logger.warning("Transformation resulted in an empty dataframe.")
+                return None
 
-        transformed_dataframe = state.transformer.transform_metadata(
-            dataframe=raw_dataframe, **workflow_args
-        )
+            transformed_output = JsonOutput(
+                output_prefix=output_prefix,
+                output_path=output_path,
+                output_suffix="transformed",
+                typename="REPOSITORY",
+            )
 
-        if not transformed_dataframe or transformed_dataframe.is_empty():
-            logger.warning("Transformation resulted in an empty dataframe.")
-            return None
+            await transformed_output.write_daft_dataframe(transformed_dataframe)
+            
+            logger.info(f"Successfully wrote transformed data to object store at {transformed_output.get_full_path()}")
+            return await transformed_output.get_statistics()
 
-        transformed_output = JsonOutput(
-            output_prefix=output_prefix,
-            output_path=output_path,
-            output_suffix="transformed",
-            typename="REPOSITORY",
-        )
-
-        await transformed_output.write_daft_dataframe(transformed_dataframe)
-        
-        logger.info(f"Successfully wrote transformed data to object store at {transformed_output.get_full_path()}")
-        logger.info("--- Finished transform_data activity ---")
-        return await transformed_output.get_statistics()
+        except Exception as e: # --- START CHANGE: Add except block to log the error ---
+            logger.error(f"An error occurred during the transform_data activity: {e}", exc_info=True)
+            raise # Re-raise the exception so the activity still fails
     
     @activity.defn
     async def upload_to_atlan(

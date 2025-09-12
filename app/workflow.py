@@ -52,21 +52,25 @@ class SourceSenseWorkflow(WorkflowInterface):
         )
         logger.info("Preflight checks passed successfully.")
 
+        # --- START CHANGE ---
+        # Capture the result from fetch_repositories, which now contains the local path
         fetch_result = await workflow.execute_activity_method(
             self.activities_cls.fetch_repositories,
             args=[workflow_args],
             start_to_close_timeout=timedelta(minutes=15),
         )
+        # --- END CHANGE ---
 
         if fetch_result:
             repo_stats = fetch_result.get("stats")
-            object_store_path = fetch_result.get("object_store_path")
-            logger.info(f"Successfully fetched raw data: {repo_stats}")
-            
-            # Add the object store path to workflow_args for the next activity
-            workflow_args["object_store_path"] = object_store_path
-            logger.info(f"[WORKFLOW] Passing object_store_path to next activity: {object_store_path}")
+            # --- START CHANGE ---
+            # Get the local_path from the result
+            local_parquet_path = fetch_result.get("local_path")
+            logger.info(f"Successfully fetched raw data to local path: {local_parquet_path}")
 
+            # Add the local path to workflow_args for the next step
+            workflow_args["local_parquet_path"] = local_parquet_path
+            # --- END CHANGE ---
 
             transform_stats = await workflow.execute_activity_method(
                 self.activities_cls.transform_data,
@@ -84,4 +88,3 @@ class SourceSenseWorkflow(WorkflowInterface):
                 logger.info("Upload to Atlan completed successfully.")
 
         logger.info("Workflow execution finished.")
-
