@@ -1,6 +1,6 @@
 import asyncio
 
-from application_sdk.application import BaseApplication # CORRECTED IMPORT
+from application_sdk.application import BaseApplication 
 from application_sdk.common.error_codes import ApiError
 from application_sdk.observability.logger_adaptor import get_logger
 
