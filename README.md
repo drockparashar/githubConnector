@@ -63,6 +63,26 @@ See [docs/challenges.md](docs/challenges.md) for a detailed list of technical ch
 - Standardized metadata transformation to Atlan format
 - Windows-compatible file handling with fallback strategies
 
+## Architecture & Design Notes
+
+- **Why GitHub was chosen as the data source:**
+  GitHub is a widely used platform with rich, real-world metadata. It allows demonstration of schema extraction, business context enrichment, and quality metrics, making it ideal for showcasing Atlan’s Apps Framework capabilities.
+
+- **Component Interaction:**
+  The app is modular:
+
+  - **Activities** handle API calls, data extraction, transformation, and upload.
+  - **Workflows** orchestrate the sequence of activities, manage state, and handle retries.
+  - **Transformers** process and standardize raw metadata into Atlan-compatible format.
+  - **Handlers/Clients** encapsulate business logic and API communication.
+
+- **Key Design Decisions:**
+  - **Modularity:** Each function is separated for maintainability and extensibility.
+  - **Error Handling:** Robust logging and retry logic ensure reliability, especially for API and file system operations.
+  - **Extensibility:** The architecture supports adding new data sources or transformation logic with minimal changes.
+  - **Cross-platform Compatibility:** Special handling for Windows file operations and Unicode encoding.
+  - **User Experience:** Real-time feedback in the frontend and clear error messages for smooth operation.
+
 ## Project Structure
 
 ```mermaid
