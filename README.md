@@ -123,6 +123,10 @@ uv run pytest
 - [Python FastAPI Documentation](https://fastapi.tiangolo.com/)
 - [Temporal Workflow Documentation](https://docs.temporal.io/)
 
+## Key Engineering Challenges & Solutions
+
+See [docs/challenges.md](docs/challenges.md) for a detailed list of technical challenges, solutions, and outcomes encountered during development.
+
 ## Contributing
 
 We welcome contributions! Please feel free to submit a Pull Request.
