@@ -1,6 +1,6 @@
-# � SourceSense GitHub App
+# GitHub App
 
-A powerful application that extracts metadata from GitHub repositories and transforms it into a standardized format. Built with Application SDK for robust workflow management and intelligent metadata extraction.
+A powerful application that extracts metadata from GitHub repositories and transforms it into a standardize Atlan format. Built with Atlan's Application SDK for robust workflow management and intelligent metadata extraction.
 
 ## Prerequisites
 
