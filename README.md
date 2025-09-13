@@ -2,6 +2,10 @@
 
 A powerful application that extracts metadata from GitHub repositories and transforms it into a standardize Atlan format. Built with Atlan's Application SDK for robust workflow management and intelligent metadata extraction.
 
+## Key Engineering Challenges & Solutions
+
+See [docs/challenges.md](docs/challenges.md) for a detailed list of technical challenges, solutions, and outcomes encountered during development.
+
 ## Prerequisites
 
 - Python 3.11+
@@ -123,9 +127,6 @@ uv run pytest
 - [Python FastAPI Documentation](https://fastapi.tiangolo.com/)
 - [Temporal Workflow Documentation](https://docs.temporal.io/)
 
-## Key Engineering Challenges & Solutions
-
-See [docs/challenges.md](docs/challenges.md) for a detailed list of technical challenges, solutions, and outcomes encountered during development.
 
 ## Contributing
 
