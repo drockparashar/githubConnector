@@ -6,7 +6,7 @@ A powerful application that extracts metadata from GitHub repositories and trans
 
 Watch a full walkthrough of the application in action, including setup, workflow execution, and key technical decisions:
 
-[![Demo Video](https://img.youtube.com/vi/9k1MBi87k2o/0.jpg)](https://youtu.be/9k1MBi87k2o)
+[![Demo Video](https://img.youtube.com/vi/XFNJ_RB5Q_I/hqdefault.jpg)](https://youtu.be/XFNJ_RB5Q_I)
 
 https://youtu.be/9k1MBi87k2o
 
